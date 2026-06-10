@@ -9,10 +9,14 @@
  *   player | raid | base | subsidy | reason | note
  *
  * subsidy/reason/note are optional. Blank lines and lines starting with #
- * are ignored. Two directives are supported:
+ * are ignored. Three directives are supported:
  *
  *   total = 8568        expected grand total for the validation line
  *   title = Week 23     report title
+ *   unit = gold         in-game denomination: gold (default), dkp, points
+ *
+ * Only in-game units are supported. Real-money currencies (RMB, USD, …) are
+ * deliberately rejected — the bot does not do real-money payment tracking.
  */
 
 export interface PayoutLine {
@@ -24,10 +28,19 @@ export interface PayoutLine {
   note: string | null;
 }
 
+export const PAYOUT_UNITS = {
+  gold: { suffix: 'g', label: 'in-game gold' },
+  dkp: { suffix: ' DKP', label: 'DKP points' },
+  points: { suffix: ' pts', label: 'guild points' },
+} as const;
+
+export type PayoutUnit = keyof typeof PAYOUT_UNITS;
+
 export interface PayoutInput {
   lines: PayoutLine[];
   expectedTotal: number | null;
   title: string | null;
+  unit: PayoutUnit;
 }
 
 export type PayoutParseResult =
@@ -45,21 +58,33 @@ export function parsePayoutEntries(raw: string): PayoutParseResult {
   const errors: string[] = [];
   let expectedTotal: number | null = null;
   let title: string | null = null;
+  let unit: PayoutUnit = 'gold';
 
   raw.split(/\r?\n/).forEach((rawLine, index) => {
     const line = rawLine.trim();
     const lineNo = index + 1;
     if (!line || line.startsWith('#')) return;
 
-    const directive = line.match(/^(total|title)\s*[:=]\s*(.+)$/i);
+    const directive = line.match(/^(total|title|unit|currency)\s*[:=]\s*(.+)$/i);
     if (directive) {
+      const keyword = directive[1]!.toLowerCase();
       const value = directive[2]!.trim();
-      if (directive[1]!.toLowerCase() === 'total') {
+      if (keyword === 'total') {
         const amount = parseAmount(value);
         if (amount === null) errors.push(`Line ${lineNo}: "${value}" is not a valid total.`);
         else expectedTotal = amount;
-      } else {
+      } else if (keyword === 'title') {
         title = value;
+      } else {
+        const requested = value.toLowerCase();
+        if (requested in PAYOUT_UNITS) {
+          unit = requested as PayoutUnit;
+        } else {
+          errors.push(
+            `Line ${lineNo}: unit "${value}" is not supported. Use an in-game unit: ` +
+              `${Object.keys(PAYOUT_UNITS).join(', ')}. Real-money currencies are not supported.`
+          );
+        }
       }
       return;
     }
@@ -95,14 +120,16 @@ export function parsePayoutEntries(raw: string): PayoutParseResult {
   }
   return errors.length > 0
     ? { ok: false, errors }
-    : { ok: true, input: { lines, expectedTotal, title } };
+    : { ok: true, input: { lines, expectedTotal, title, unit } };
 }
 
-function fmt(amount: number): string {
-  return `${amount.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}g`;
+function makeFmt(unit: PayoutUnit): (amount: number) => string {
+  const { suffix } = PAYOUT_UNITS[unit];
+  return (amount) =>
+    `${amount.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}${suffix}`;
 }
 
 /**
@@ -112,6 +139,7 @@ function fmt(amount: number): string {
  * grand totals and a paid-vs-expected check.
  */
 export function buildPayoutReport(input: PayoutInput, nowMs?: number): string {
+  const fmt = makeFmt(input.unit);
   const generatedAt = new Date(nowMs ?? Date.now()).toISOString().slice(0, 16).replace('T', ' ');
   const byPlayer = new Map<string, PayoutLine[]>();
   for (const line of input.lines) {
@@ -167,6 +195,6 @@ export function buildPayoutReport(input: PayoutInput, nowMs?: number): string {
   } else {
     out.push(`Check：grand total ${fmt(grand)}（no expected total given）`);
   }
-  out.push('', 'Amounts are in-game gold only — no real-money payments.');
+  out.push('', `Amounts are ${PAYOUT_UNITS[input.unit].label} only — no real-money payments.`);
   return out.join('\n');
 }

@@ -66,6 +66,31 @@ describe('parsePayoutEntries', () => {
     const result = parsePayoutEntries('# just a comment\n\ntitle = empty week');
     expect(result).toMatchObject({ ok: false, errors: [expect.stringContaining('No payout lines')] });
   });
+
+  it('accepts in-game units via unit/currency directives', () => {
+    expect(parsePayoutEntries('Acess | SSC+TK | 100\nunit = dkp')).toMatchObject({
+      ok: true,
+      input: { unit: 'dkp' },
+    });
+    expect(parsePayoutEntries('Acess | SSC+TK | 100\ncurrency: Points')).toMatchObject({
+      ok: true,
+      input: { unit: 'points' },
+    });
+    expect(parsePayoutEntries('Acess | SSC+TK | 100')).toMatchObject({
+      ok: true,
+      input: { unit: 'gold' },
+    });
+  });
+
+  it('rejects real-money currencies as units', () => {
+    for (const fiat of ['rmb', 'CNY', 'usd', '¥']) {
+      const result = parsePayoutEntries(`Acess | SSC+TK | 100\nunit = ${fiat}`);
+      expect(result.ok).toBe(false);
+      if (result.ok) continue;
+      expect(result.errors[0]).toContain('not supported');
+      expect(result.errors[0]).toContain('Real-money currencies are not supported');
+    }
+  });
 });
 
 function build(text: string, nowMs = NOW): string {
@@ -132,6 +157,15 @@ describe('buildPayoutReport', () => {
     expect(build('Acess | SSC+TK | 100')).toContain(
       'Amounts are in-game gold only — no real-money payments.'
     );
+  });
+
+  it('formats amounts and the footer in the chosen in-game unit', () => {
+    const report = build('Acess | SSC+TK | 283.83 | 83.48 | ranged #1\nunit = dkp');
+    expect(report).toContain('Acess：367.31 DKP');
+    expect(report).toContain('  Base total：283.83 DKP');
+    expect(report).toContain('Check：grand total 367.31 DKP（no expected total given）');
+    expect(report).toContain('Amounts are DKP points only — no real-money payments.');
+    expect(report).not.toContain('367.31g');
   });
 
   it('defaults the generated timestamp to now', () => {

@@ -136,6 +136,7 @@ Acess | Gruul | 8.80
 包子 | SSC+TK | 0 | 41.74 | melee #2
 total = 8568        # optional: expected grand total for the check line
 title = Week 23     # optional report title
+unit = gold         # optional in-game unit: gold (default), dkp, points
 ```
 
 The bot replies with an alphabetically sorted report (zh locale-aware
@@ -145,9 +146,10 @@ affected player only, and a final `Check：… ✅/❌` line verifying that
 individual totals add up to the expected total. Long reports arrive as a
 `.txt` attachment.
 
-All amounts are in-game gold. The bot intentionally has no real-money
-(RMB/USD/etc.) denomination, payment tracking, or split calculation —
-see Non-goals.
+Amounts can be denominated in any **in-game** unit: `gold` (default), `dkp`,
+or `points`. Real-money currencies (RMB/USD/etc.) are deliberately rejected
+by the parser — the bot has no real-money denomination, payment tracking, or
+split calculation. See Non-goals.
 
 ### Auction rules
 
