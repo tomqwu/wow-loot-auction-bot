@@ -1,8 +1,10 @@
+import { AttachmentBuilder, type ModalBuilder } from 'discord.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { commandList, commands } from '../src/commands';
 import { auctionCommand } from '../src/commands/auction';
 import { bidCommand } from '../src/commands/bid';
 import { ledgerCommand } from '../src/commands/ledger';
+import { payoutCommand } from '../src/commands/payout';
 import { registerCommand } from '../src/commands/register';
 import { settleCommand } from '../src/commands/settle';
 import { getAuditLog } from '../src/services/audit';
@@ -52,9 +54,35 @@ afterEach(() => {
 });
 
 describe('command registry', () => {
-  it('exposes all five commands by name', () => {
-    expect([...commands.keys()].sort()).toEqual(['auction', 'bid', 'ledger', 'register', 'settle']);
-    expect(commandList).toHaveLength(5);
+  it('exposes all six commands by name', () => {
+    expect([...commands.keys()].sort()).toEqual([
+      'auction',
+      'bid',
+      'ledger',
+      'payout',
+      'register',
+      'settle',
+    ]);
+    expect(commandList).toHaveLength(6);
+  });
+});
+
+describe('/payout', () => {
+  it('rejects non-officers', async () => {
+    const ctx = context();
+    const interaction = makeChatInteraction({ member: makeMember(['Member']) });
+    await payoutCommand.execute(asChatInput(interaction), ctx);
+    expect(interaction.replies[0]?.content).toContain('Only officers');
+    expect(interaction.showModal).not.toHaveBeenCalled();
+  });
+
+  it('opens the payout entry modal for officers', async () => {
+    const ctx = context();
+    const interaction = makeChatInteraction({ member: OFFICER() });
+    await payoutCommand.execute(asChatInput(interaction), ctx);
+    expect(interaction.replies).toHaveLength(0);
+    const modal = interaction.showModal.mock.calls[0]![0] as ModalBuilder;
+    expect(modal.toJSON().custom_id).toBe('payoutmodal');
   });
 });
 
@@ -485,5 +513,53 @@ describe('/ledger', () => {
     expect(won.name).toBe('Won auctions (22)');
     expect(won.value).toMatch(/…and \d+ more\./);
     expect(won.value.length).toBeLessThanOrEqual(1024);
+  });
+
+  it('renders a copyable plain-text report with format:text', async () => {
+    const ctx = context();
+    upsertUser(ctx.db, 'bob', 'Bobbo', 'Whitemane');
+    const auction = seedAuction(ctx);
+    placeBid(ctx.db, { auctionId: auction.id, userId: 'bob', amount: 1500, allowSelfRaise: true, nowMs: NOW });
+    closeAuction(ctx.db, auction.id, 'officer', { nowMs: NOW + 1 });
+    const interaction = makeChatInteraction({
+      users: { user: { id: 'bob', username: 'bobby' } },
+      strings: { format: 'text' },
+    });
+
+    await ledgerCommand.execute(asChatInput(interaction), ctx);
+
+    const content = interaction.replies[0]!.content!;
+    expect(content.startsWith('```text\n')).toBe(true);
+    expect(content.endsWith('\n```')).toBe(true);
+    expect(content).toContain('Loot ledger — bobby (Bobbo - Whitemane)');
+    expect(content).toContain(`#${auction.id} | Ashkandi, Greatsword of the Brotherhood | 1,500g | unpaid |`);
+    expect(content).toContain('Total owed (unpaid): 1,500g');
+    // No Discord mentions — the report must read correctly outside Discord.
+    expect(content).not.toContain('<@');
+    expect(interaction.replies[0]!.files).toBeUndefined();
+  });
+
+  it('attaches the text report as a file when it exceeds the message limit', async () => {
+    const ctx = context();
+    for (let i = 0; i < 40; i++) {
+      const auction = seedAuction(ctx);
+      placeBid(ctx.db, { auctionId: auction.id, userId: 'bob', amount: 1000, allowSelfRaise: true, nowMs: NOW });
+      closeAuction(ctx.db, auction.id, 'officer', { nowMs: NOW + i });
+    }
+    const interaction = makeChatInteraction({
+      users: { user: { id: 'bob', username: 'bobby' } },
+      strings: { format: 'text' },
+    });
+
+    await ledgerCommand.execute(asChatInput(interaction), ctx);
+
+    const reply = interaction.replies[0]!;
+    expect(reply.content).toContain('attached');
+    const file = reply.files?.[0] as AttachmentBuilder;
+    expect(file).toBeInstanceOf(AttachmentBuilder);
+    expect(file.name).toBe('ledger-bob.txt');
+    const report = (file.attachment as Buffer).toString('utf8');
+    expect(report).toContain('Won auctions: 40');
+    expect(report).toContain('Total owed (unpaid): 40,000g');
   });
 });

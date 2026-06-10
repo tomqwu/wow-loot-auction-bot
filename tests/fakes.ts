@@ -125,6 +125,7 @@ export interface FakeReplyPayload {
   flags?: number;
   embeds?: unknown[];
   components?: unknown[];
+  files?: unknown[];
 }
 
 export interface FakeUser {
@@ -157,6 +158,7 @@ export interface FakeChatInteraction {
   };
   reply: ReturnType<typeof vi.fn>;
   fetchReply: ReturnType<typeof vi.fn>;
+  showModal: ReturnType<typeof vi.fn>;
   replies: FakeReplyPayload[];
 }
 
@@ -178,6 +180,7 @@ export function makeChatInteraction(options: ChatInteractionOptions = {}): FakeC
       replies.push(typeof payload === 'string' ? { content: payload } : payload);
     }),
     fetchReply: vi.fn(async () => ({ id: 'msg-1', channelId: channelId ?? 'chan-1' })),
+    showModal: vi.fn(async () => undefined),
     replies,
   };
 }

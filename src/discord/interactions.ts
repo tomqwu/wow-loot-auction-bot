@@ -7,13 +7,16 @@ import {
   type ButtonInteraction,
   type ModalSubmitInteraction,
 } from 'discord.js';
+import { PAYOUT_MODAL_ID } from '../commands/payout';
 import {
   getAuction,
   getHighestBid,
   minimumAcceptableBid,
 } from '../services/auctions';
+import { buildPayoutReport, parsePayoutEntries } from '../services/payoutReport';
 import { executeBidFlow, executeCloseFlow, type AppContext } from './lifecycle';
 import { requireOfficer, requireRegistered } from './permissions';
+import { textReportPayload } from './textReport';
 
 const QUICK_BID_DELTAS: Record<string, number> = { '500': 500, '1000': 1000 };
 
@@ -97,11 +100,38 @@ export async function handleButton(interaction: ButtonInteraction, ctx: AppConte
   await interaction.reply({ content: result.message, flags: MessageFlags.Ephemeral });
 }
 
+async function handlePayoutModal(interaction: ModalSubmitInteraction): Promise<void> {
+  const parsed = parsePayoutEntries(interaction.fields.getTextInputValue('entries'));
+  if (!parsed.ok) {
+    const shown = parsed.errors.slice(0, 10);
+    const omitted = parsed.errors.length - shown.length;
+    await interaction.reply({
+      content:
+        `Could not parse the payout entries:\n${shown.map((error) => `• ${error}`).join('\n')}` +
+        (omitted > 0 ? `\n…and ${omitted} more.` : ''),
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+  const report = buildPayoutReport(parsed.input);
+  await interaction.reply(
+    textReportPayload(
+      report,
+      'payout-report.txt',
+      'Payout report attached as a text file (too long to show inline).'
+    )
+  );
+}
+
 export async function handleModal(
   interaction: ModalSubmitInteraction,
   ctx: AppContext
 ): Promise<void> {
   const [scope, idRaw] = interaction.customId.split(':');
+  if (scope === PAYOUT_MODAL_ID) {
+    await handlePayoutModal(interaction);
+    return;
+  }
   if (scope !== 'bidmodal') return;
   const auctionId = Number(idRaw);
   if (!Number.isSafeInteger(auctionId)) return;
