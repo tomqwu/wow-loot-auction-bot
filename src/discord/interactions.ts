@@ -54,7 +54,7 @@ export async function handleButton(interaction: ButtonInteraction, ctx: AppConte
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
             .setCustomId('amount')
-            .setLabel('Bid amount in gold (whole number)')
+            .setLabel('Bid amount (whole number)')
             .setStyle(TextInputStyle.Short)
             .setRequired(true)
             .setMaxLength(10)
@@ -100,8 +100,14 @@ export async function handleButton(interaction: ButtonInteraction, ctx: AppConte
   await interaction.reply({ content: result.message, flags: MessageFlags.Ephemeral });
 }
 
-async function handlePayoutModal(interaction: ModalSubmitInteraction): Promise<void> {
-  const parsed = parsePayoutEntries(interaction.fields.getTextInputValue('entries'));
+async function handlePayoutModal(
+  interaction: ModalSubmitInteraction,
+  ctx: AppContext
+): Promise<void> {
+  const parsed = parsePayoutEntries(
+    interaction.fields.getTextInputValue('entries'),
+    ctx.config.currencyUnit
+  );
   if (!parsed.ok) {
     const shown = parsed.errors.slice(0, 10);
     const omitted = parsed.errors.length - shown.length;
@@ -129,7 +135,7 @@ export async function handleModal(
 ): Promise<void> {
   const [scope, idRaw] = interaction.customId.split(':');
   if (scope === PAYOUT_MODAL_ID) {
-    await handlePayoutModal(interaction);
+    await handlePayoutModal(interaction, ctx);
     return;
   }
   if (scope !== 'bidmodal') return;
@@ -146,7 +152,7 @@ export async function handleModal(
   const amount = /^\d+$/.test(raw) ? Number(raw) : NaN;
   if (!Number.isSafeInteger(amount) || amount <= 0) {
     await interaction.reply({
-      content: `"${raw || interaction.fields.getTextInputValue('amount')}" is not a valid bid. Enter a positive whole number of gold.`,
+      content: `"${raw || interaction.fields.getTextInputValue('amount')}" is not a valid bid. Enter a positive whole number.`,
       flags: MessageFlags.Ephemeral,
     });
     return;

@@ -1,5 +1,10 @@
 import 'dotenv/config';
 import path from 'node:path';
+import {
+  CURRENCY_UNITS,
+  DEFAULT_CURRENCY_UNIT,
+  type CurrencyUnit,
+} from './utils/format';
 
 export interface BotConfig {
   token: string;
@@ -8,6 +13,7 @@ export interface BotConfig {
   sqlitePath: string;
   officerRoles: string[];
   gameVersion: string;
+  currencyUnit: CurrencyUnit;
 }
 
 export const DEFAULT_OFFICER_ROLES = ['Raid Leader', 'Auctioneer'];
@@ -19,6 +25,19 @@ export const DEFAULT_OFFICER_ROLES = ['Raid Leader', 'Auctioneer'];
 export function resolveSqlitePath(env: NodeJS.ProcessEnv = process.env): string {
   const raw = env.SQLITE_PATH ?? env.DATABASE_URL ?? path.join('data', 'auction.db');
   return raw.replace(/^sqlite:\/\//i, '').replace(/^sqlite:/i, '').replace(/^file:/i, '');
+}
+
+/**
+ * Display unit for bids and the ledger. In-game units only; anything else
+ * (e.g. fiat currency codes) is rejected at startup.
+ */
+export function parseCurrencyUnit(raw: string | undefined): CurrencyUnit {
+  const value = raw?.trim().toLowerCase();
+  if (!value) return DEFAULT_CURRENCY_UNIT;
+  if (value in CURRENCY_UNITS) return value as CurrencyUnit;
+  throw new Error(
+    `Invalid CURRENCY_UNIT "${raw}". Supported in-game units: ${Object.keys(CURRENCY_UNITS).join(', ')}.`
+  );
 }
 
 export function parseOfficerRoles(raw: string | undefined): string[] {
@@ -41,5 +60,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
     sqlitePath: resolveSqlitePath(env),
     officerRoles: parseOfficerRoles(env.OFFICER_ROLES),
     gameVersion: (env.GAME_VERSION || 'classic').toLowerCase(),
+    currencyUnit: parseCurrencyUnit(env.CURRENCY_UNIT),
   };
 }

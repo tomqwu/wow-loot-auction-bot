@@ -31,6 +31,7 @@ describe('buildLedgerTextReport', () => {
       displayName: 'Bobby',
       character: { character_name: 'Bobbo', realm: 'Whitemane' },
       ledger: SAMPLE_LEDGER,
+      unit: 'gold',
       nowMs: NOW,
     });
     expect(report).toContain('Loot ledger — Bobby (Bobbo - Whitemane)');
@@ -43,6 +44,18 @@ describe('buildLedgerTextReport', () => {
     expect(report).toContain('Total owed (unpaid): 1,500g');
     expect(report).toContain('Settled (paid/traded): 800g');
     expect(report).toContain('in-game gold/trade only');
+  });
+
+  it('renders amounts and the footer in the chosen unit', () => {
+    const report = buildLedgerTextReport({
+      displayName: 'Bobby',
+      ledger: SAMPLE_LEDGER,
+      unit: 'dkp',
+      nowMs: NOW,
+    });
+    expect(report).toContain('#12 | Ashkandi, Greatsword of the Brotherhood | 1,500 DKP | unpaid');
+    expect(report).toContain('Total owed (unpaid): 1,500 DKP');
+    expect(report).toContain('Settlement is DKP points/trade only — no real-money payments.');
   });
 
   it('contains no Discord markup so it can be pasted anywhere', () => {
@@ -85,6 +98,7 @@ describe('buildLedgerTextReport', () => {
         totalOwed: 100,
         totalSettled: 0,
       },
+      unit: 'gold',
       nowMs: NOW,
     });
     expect(report).toContain('#1 | Mystery Loot | 100g | unpaid | —');

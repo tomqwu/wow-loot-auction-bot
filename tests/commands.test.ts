@@ -258,6 +258,33 @@ describe('/auction close and cancel', () => {
   });
 });
 
+describe('/auction list', () => {
+  it('reports when nothing is open', async () => {
+    const ctx = context();
+    const interaction = makeChatInteraction({ subcommand: 'list' });
+    await auctionCommand.execute(asChatInput(interaction), ctx);
+    expect(interaction.replies[0]?.content).toContain('No auctions are open');
+  });
+
+  it('lists open auctions soonest-ending first, with current bid', async () => {
+    const ctx = context();
+    const later = seedAuction(ctx, { durationMinutes: 120 });
+    const sooner = seedAuction(ctx, { durationMinutes: 30 });
+    placeBid(ctx.db, { auctionId: sooner.id, userId: 'bob', amount: 1200, allowSelfRaise: true, nowMs: NOW });
+    const interaction = makeChatInteraction({ subcommand: 'list' });
+
+    await auctionCommand.execute(asChatInput(interaction), ctx);
+
+    const content = interaction.replies[0]!.content!;
+    expect(content).toContain('Open auctions (2)');
+    expect(content).toContain(`#${sooner.id}`);
+    expect(content).toContain('1,200g');
+    expect(content).toContain('no bids, starts at 1,000g');
+    // Soonest-ending auction listed first.
+    expect(content.indexOf(`#${sooner.id}`)).toBeLessThan(content.indexOf(`#${later.id}`));
+  });
+});
+
 describe('/auction history', () => {
   it('reports unknown auctions', async () => {
     const ctx = context();

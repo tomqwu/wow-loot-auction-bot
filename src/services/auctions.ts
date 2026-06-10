@@ -8,6 +8,7 @@ import type {
   SettlementStatus,
   UserRow,
 } from '../db/types';
+import { DEFAULT_CURRENCY_UNIT, formatAmount, type CurrencyUnit } from '../utils/format';
 import { logAudit } from './audit';
 
 /** A bid landing within this window before the end extends the auction. */
@@ -31,6 +32,8 @@ export interface BidValidationInput {
    * minimum increment.
    */
   allowSelfRaise: boolean;
+  /** Display unit used in rejection messages. */
+  unit?: CurrencyUnit;
 }
 
 export type BidValidation = { ok: true } | { ok: false; reason: string };
@@ -51,7 +54,7 @@ export function validateBid(input: BidValidationInput): BidValidation {
     return { ok: false, reason: 'This auction has already ended.' };
   }
   if (!Number.isSafeInteger(amount) || amount <= 0) {
-    return { ok: false, reason: 'Bid amount must be a positive whole number of gold.' };
+    return { ok: false, reason: 'Bid amount must be a positive whole number.' };
   }
   if (highestBid && highestBid.user_id === bidderId && !allowSelfRaise) {
     return {
@@ -62,7 +65,8 @@ export function validateBid(input: BidValidationInput): BidValidation {
   }
   const minimum = minimumAcceptableBid(auction, highestBid !== null);
   if (amount < minimum) {
-    return { ok: false, reason: `Bid too low. Minimum acceptable bid is ${minimum}g.` };
+    const display = formatAmount(minimum, input.unit ?? DEFAULT_CURRENCY_UNIT);
+    return { ok: false, reason: `Bid too low. Minimum acceptable bid is ${display}.` };
   }
   return { ok: true };
 }
@@ -193,6 +197,11 @@ export interface PlaceBidResult {
   auction?: AuctionRow;
   /** True when the bid triggered an anti-snipe extension. */
   extended?: boolean;
+  /**
+   * The bid this one displaced from the lead, if any (a different user who
+   * held the top bid before this one). Used to notify the outbid user.
+   */
+  outbid?: BidRow;
 }
 
 export interface PlaceBidInput {
@@ -201,6 +210,8 @@ export interface PlaceBidInput {
   amount: number;
   allowSelfRaise: boolean;
   nowMs?: number;
+  /** Display unit used in rejection messages. */
+  unit?: CurrencyUnit;
 }
 
 export function placeBid(db: Db, input: PlaceBidInput): PlaceBidResult {
@@ -216,6 +227,7 @@ export function placeBid(db: Db, input: PlaceBidInput): PlaceBidResult {
       amount: input.amount,
       nowMs: now,
       allowSelfRaise: input.allowSelfRaise,
+      unit: input.unit,
     });
     if (!validation.ok) return { ok: false, reason: validation.reason };
 
@@ -240,6 +252,7 @@ export function placeBid(db: Db, input: PlaceBidInput): PlaceBidResult {
       bid,
       auction: getAuction(db, input.auctionId)!,
       extended: newEndsAt !== null,
+      outbid: highestBid && highestBid.user_id !== input.userId ? highestBid : undefined,
     };
   });
   return run();

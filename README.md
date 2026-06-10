@@ -1,11 +1,11 @@
 # WoW Loot Auction Bot
 
 A Discord bot for tracking World of Warcraft guild loot auctions: raid leaders
-start auctions for dropped items, members bid **in-game gold**, and officers
-close and settle them. Every bid is kept forever (voids are soft), and the
-ledger shows who still owes what.
+start auctions for dropped items, members bid in an **in-game unit** (DKP by
+default; also points or gold), and officers close and settle them. Every bid
+is kept forever (voids are soft), and the ledger shows who still owes what.
 
-> **Not for real-money trading.** This tool tracks in-game gold/trade
+> **Not for real-money trading.** This tool tracks in-game DKP/points/gold
 > settlement between guildmates only. It has no payment links, no
 > marketplace, and no escrow — and never will.
 
@@ -17,9 +17,15 @@ ledger shows who still owes what.
   current bid, leader, and a countdown — updated publicly on every bid
 - Bid via `/bid` or buttons: **+min increment**, **+500**, **+1000**, and a
   **custom bid** modal
+- **Outbid alerts**: the displaced top bidder is pinged in the channel when
+  someone outbids them
+- **`/auction list`**: see every open auction (item, current bid, time left)
+  at a glance
 - **Anti-snipe**: a bid in the final 20 seconds extends the auction by 30 seconds
 - **Self-bid protection**: the current leader can't accidentally raise their own
   bid with quick-bid buttons (explicit `/bid` raises are allowed)
+- **Configurable bid unit** (`CURRENCY_UNIT`): DKP (default), points, or gold —
+  in-game units only
 - Officer-only close/cancel/settle/void, all written to an audit log
 - Full bid history per auction; voided bids are marked, never deleted
 - `/ledger` per user: won items, totals owed, paid/traded status — with a
@@ -70,6 +76,7 @@ npm run dev              # or: npm run build && npm start
 | `DATABASE_URL`      | no       | Alternative to `SQLITE_PATH`; accepts `sqlite:./data/auction.db` or `file:...`                |
 | `OFFICER_ROLES`     | no       | Comma-separated role names that may run officer commands. Default `Raid Leader,Auctioneer`    |
 | `GAME_VERSION`      | no       | Wowhead link flavor: `classic` (default), `era`, `sod`, `tbc`, `wotlk`, `cata`, `mop`, `retail` |
+| `CURRENCY_UNIT`     | no       | Bid/ledger denomination (in-game units only): `dkp` (default), `points`, `gold`. Fiat codes are rejected at startup |
 
 ### Docker (optional)
 
@@ -85,10 +92,11 @@ npm run deploy-commands
 | Command | Who | What |
 | --- | --- | --- |
 | `/register character:<name> realm:<realm>` | anyone | Link your WoW character (required before bidding) |
-| `/auction start start:<gold> min_increment:<gold> duration_minutes:<min> [item_id] [item_link] [item_name]` | officers | Start an auction. Needs at least one of `item_id`, `item_link`, `item_name` |
-| `/bid auction_id:<id> amount:<gold>` | registered users | Place a bid |
+| `/auction start start:<amount> min_increment:<amount> duration_minutes:<min> [item_id] [item_link] [item_name]` | officers | Start an auction. Needs at least one of `item_id`, `item_link`, `item_name` |
+| `/bid auction_id:<id> amount:<amount>` | registered users | Place a bid (in the configured unit) |
 | `/auction close auction_id:<id>` | officers | Close now; highest bid wins, settlement opens as `unpaid` |
 | `/auction cancel auction_id:<id>` | officers | Cancel with no winner |
+| `/auction list` | anyone | List every open auction with current bid and time remaining |
 | `/auction history auction_id:<id>` | anyone | Full bid history (voided bids shown struck through) |
 | `/auction voidbid bid_id:<id> reason:<text>` | officers | Soft-void a bid on an active auction and recompute the price |
 | `/settle auction_id:<id> status:<unpaid\|paid\|traded\|cancelled>` | officers | Update settlement status |
@@ -193,7 +201,7 @@ shows the command pre-selected for Ctrl+C.
 
 ```bash
 npm run typecheck       # tsc --noEmit
-npm test                # vitest, 10 suites / 167 tests
+npm test                # vitest, 12 suites / 204 tests
 npm run test:coverage   # tests + v8 coverage report (HTML in coverage/)
 npm run dev             # run the bot with tsx
 npm run build           # compile to dist/

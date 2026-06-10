@@ -12,11 +12,11 @@ src/
                          resumes timers on startup, graceful shutdown
   deploy-commands.ts     One-shot script that registers slash commands
   config.ts              Environment parsing (token, db path, officer roles,
-                         game version)
+                         game version, currency unit)
   commands/              One module per slash command; each exports
                          { data: SlashCommandBuilder, execute(interaction, ctx) }
     register.ts          /register — link a WoW character
-    auction.ts           /auction start|close|cancel|history|voidbid
+    auction.ts           /auction start|close|cancel|list|history|voidbid
     bid.ts               /bid — explicit bid by auction id
     settle.ts            /settle — settlement status updates
     ledger.ts            /ledger — won auctions and totals per user, embed or
