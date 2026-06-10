@@ -1,0 +1,29 @@
+{
+  "name": "wow-loot-auction-bot",
+  "version": "0.1.0",
+  "description": "Discord bot for tracking WoW guild loot auctions (in-game gold bids, winners, settlement status). No real-money trading.",
+  "main": "dist/bot.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/bot.js",
+    "dev": "tsx src/bot.ts",
+    "deploy-commands": "tsx src/deploy-commands.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "discord.js": "^14.21.0",
+    "dotenv": "^17.2.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

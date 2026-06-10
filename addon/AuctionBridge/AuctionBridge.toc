@@ -1,0 +1,9 @@
+## Interface: 11507
+## Title: AuctionBridge
+## Notes: Capture the hovered item link as a ready-to-paste /auction start command for your guild's Discord loot auction bot.
+## Author: Your Guild
+## Version: 0.1.0
+## SavedVariables:
+
+Bindings.xml
+AuctionBridge.lua

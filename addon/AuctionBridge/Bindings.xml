@@ -1,0 +1,5 @@
+<Bindings>
+  <Binding name="AUCTIONBRIDGE_CAPTURE" header="AUCTIONBRIDGE" category="ADDONS">
+    AuctionBridge_CaptureItem()
+  </Binding>
+</Bindings>
