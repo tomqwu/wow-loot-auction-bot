@@ -138,11 +138,26 @@ shows the command pre-selected for Ctrl+C.
 ## Development
 
 ```bash
-npm run typecheck   # tsc --noEmit
-npm test            # vitest: link parsing, bid validation, auction lifecycle
-npm run dev         # run the bot with tsx
-npm run build       # compile to dist/
+npm run typecheck       # tsc --noEmit
+npm test                # vitest, 10 suites / 167 tests
+npm run test:coverage   # tests + v8 coverage report (HTML in coverage/)
+npm run dev             # run the bot with tsx
+npm run build           # compile to dist/
 ```
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the module layout, data
+model, lifecycle details, and testing strategy.
+
+### Test coverage
+
+Coverage thresholds are enforced by `vitest.config.ts` and by CI
+(`.github/workflows/ci.yml`): **99% statements/lines/functions and 96%
+branches**. Current coverage is 100% statements/lines/functions and ~99%
+branches. The only files excluded are the two thin entry points
+(`src/bot.ts`, `src/deploy-commands.ts`, which just wire modules to the live
+Discord gateway) and type-only declaration files; every command, button,
+modal, timer, and service path is exercised by tests using an in-memory
+SQLite database and faked Discord objects.
 
 Layout:
 
