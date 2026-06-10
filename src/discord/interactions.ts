@@ -14,11 +14,10 @@ import {
   minimumAcceptableBid,
 } from '../services/auctions';
 import { buildPayoutReport, parsePayoutEntries } from '../services/payoutReport';
+import { QUICK_BID_MULTIPLIERS } from './embeds';
 import { executeBidFlow, executeCloseFlow, type AppContext } from './lifecycle';
 import { requireOfficer, requireRegistered } from './permissions';
 import { textReportPayload } from './textReport';
-
-const QUICK_BID_DELTAS: Record<string, number> = { '500': 500, '1000': 1000 };
 
 export async function handleButton(interaction: ButtonInteraction, ctx: AppContext): Promise<void> {
   const [scope, action, idRaw] = interaction.customId.split(':');
@@ -85,10 +84,10 @@ export async function handleButton(interaction: ButtonInteraction, ctx: AppConte
   if (action === 'min') {
     amount = nextMinimum;
   } else {
-    const delta = QUICK_BID_DELTAS[action];
-    if (delta === undefined) return;
+    const multiplier = Number(action.match(/^x(\d+)$/)?.[1]);
+    if (!(QUICK_BID_MULTIPLIERS as readonly number[]).includes(multiplier)) return;
     const base = highestBid ? auction.current_price : auction.start_price;
-    amount = Math.max(nextMinimum, base + delta);
+    amount = Math.max(nextMinimum, base + multiplier * auction.min_increment);
   }
 
   const result = await executeBidFlow(ctx, {

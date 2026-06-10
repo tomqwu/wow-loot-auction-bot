@@ -19,7 +19,7 @@
  * deliberately rejected — the bot does not do real-money payment tracking.
  */
 
-import { CURRENCY_UNITS, type CurrencyUnit } from '../utils/format';
+import { CURRENCY_UNITS, DEFAULT_CURRENCY_UNIT, type CurrencyUnit } from '../utils/format';
 
 export interface PayoutLine {
   player: string;
@@ -53,7 +53,7 @@ function parseAmount(raw: string): number | null {
 
 export function parsePayoutEntries(
   raw: string,
-  defaultUnit: PayoutUnit = 'gold'
+  defaultUnit: PayoutUnit = DEFAULT_CURRENCY_UNIT
 ): PayoutParseResult {
   const lines: PayoutLine[] = [];
   const errors: string[] = [];

@@ -161,12 +161,12 @@ describe('buildAuctionButtons', () => {
     }>;
     expect(buttons.map((b) => b.custom_id)).toEqual([
       'bid:min:7',
-      'bid:500:7',
-      'bid:1000:7',
+      'bid:x5:7',
+      'bid:x10:7',
       'bid:custom:7',
       'auction:close:7',
     ]);
-    expect(buttons.map((b) => b.label)).toEqual(['+100', '+500', '+1000', 'Custom bid', 'Close auction']);
+    expect(buttons.map((b) => b.label)).toEqual(['+100', '+500', '+1,000', 'Custom bid', 'Close auction']);
     expect(buttons.every((b) => !b.disabled)).toBe(true);
   });
 
@@ -174,5 +174,11 @@ describe('buildAuctionButtons', () => {
     const [row] = buildAuctionButtons(makeAuction({ status: 'closed' }));
     const buttons = row!.toJSON().components as Array<{ disabled?: boolean }>;
     expect(buttons.every((b) => b.disabled)).toBe(true);
+  });
+
+  it('scales quick-bid labels with the auction increment', () => {
+    const [row] = buildAuctionButtons(makeAuction({ min_increment: 5 }));
+    const buttons = row!.toJSON().components as Array<{ label?: string }>;
+    expect(buttons.slice(0, 3).map((b) => b.label)).toEqual(['+5', '+25', '+50']);
   });
 });

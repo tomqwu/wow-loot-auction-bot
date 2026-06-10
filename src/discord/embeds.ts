@@ -85,24 +85,27 @@ export function buildAuctionEmbed(data: AuctionEmbedData): EmbedBuilder {
   return embed;
 }
 
+/**
+ * Quick-bid buttons scale with each auction's own minimum increment instead
+ * of fixed gold-sized amounts, so they stay sensible for points/DKP scales.
+ */
+export const QUICK_BID_MULTIPLIERS = [5, 10] as const;
+
 export function buildAuctionButtons(auction: AuctionRow): ActionRowBuilder<ButtonBuilder>[] {
   const disabled = auction.status !== 'active';
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`bid:min:${auction.id}`)
-      .setLabel(`+${auction.min_increment}`)
+      .setLabel(`+${auction.min_increment.toLocaleString('en-US')}`)
       .setStyle(ButtonStyle.Primary)
       .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId(`bid:500:${auction.id}`)
-      .setLabel('+500')
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled),
-    new ButtonBuilder()
-      .setCustomId(`bid:1000:${auction.id}`)
-      .setLabel('+1000')
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(disabled),
+    ...QUICK_BID_MULTIPLIERS.map((multiplier) =>
+      new ButtonBuilder()
+        .setCustomId(`bid:x${multiplier}:${auction.id}`)
+        .setLabel(`+${(auction.min_increment * multiplier).toLocaleString('en-US')}`)
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(disabled)
+    ),
     new ButtonBuilder()
       .setCustomId(`bid:custom:${auction.id}`)
       .setLabel('Custom bid')

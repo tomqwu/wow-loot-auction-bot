@@ -1,8 +1,8 @@
 # WoW Loot Auction Bot
 
 A Discord bot for tracking World of Warcraft guild loot auctions: raid leaders
-start auctions for dropped items, members bid in an **in-game unit** (DKP by
-default; also points or gold), and officers close and settle them. Every bid
+start auctions for dropped items, members bid in **points** (the default —
+DKP or gold also available), and officers close and settle them. Every bid
 is kept forever (voids are soft), and the ledger shows who still owes what.
 
 > **Not for real-money trading.** This tool tracks in-game DKP/points/gold
@@ -15,8 +15,8 @@ is kept forever (voids are soft), and the ledger shows who still owes what.
   (`|cffa335ee|Hitem:19364::::::::|h[Ashkandi, Greatsword of the Brotherhood]|h|r`)
 - Live auction card (Discord embed) with item name, item ID, Wowhead link,
   current bid, leader, and a countdown — updated publicly on every bid
-- Bid via `/bid` or buttons: **+min increment**, **+500**, **+1000**, and a
-  **custom bid** modal
+- Bid via `/bid` or buttons: **+1×**, **+5×**, **+10×** the auction's own
+  minimum increment (so they fit any point scale), plus a **custom bid** modal
 - **Outbid alerts**: the displaced top bidder is pinged in the channel when
   someone outbids them
 - **`/auction list`**: see every open auction (item, current bid, time left)
@@ -24,7 +24,7 @@ is kept forever (voids are soft), and the ledger shows who still owes what.
 - **Anti-snipe**: a bid in the final 20 seconds extends the auction by 30 seconds
 - **Self-bid protection**: the current leader can't accidentally raise their own
   bid with quick-bid buttons (explicit `/bid` raises are allowed)
-- **Configurable bid unit** (`CURRENCY_UNIT`): DKP (default), points, or gold —
+- **Configurable bid unit** (`CURRENCY_UNIT`): points (default), DKP, or gold —
   in-game units only
 - Officer-only close/cancel/settle/void, all written to an audit log
 - Full bid history per auction; voided bids are marked, never deleted
@@ -76,7 +76,7 @@ npm run dev              # or: npm run build && npm start
 | `DATABASE_URL`      | no       | Alternative to `SQLITE_PATH`; accepts `sqlite:./data/auction.db` or `file:...`                |
 | `OFFICER_ROLES`     | no       | Comma-separated role names that may run officer commands. Default `Raid Leader,Auctioneer`    |
 | `GAME_VERSION`      | no       | Wowhead link flavor: `classic` (default), `era`, `sod`, `tbc`, `wotlk`, `cata`, `mop`, `retail` |
-| `CURRENCY_UNIT`     | no       | Bid/ledger denomination (in-game units only): `dkp` (default), `points`, `gold`. Fiat codes are rejected at startup |
+| `CURRENCY_UNIT`     | no       | Bid/ledger denomination (in-game units only): `points` (default), `dkp`, `gold`. Fiat codes are rejected at startup |
 
 ### Docker (optional)
 
@@ -120,14 +120,14 @@ attached as a `.txt` file you can forward instead. Example output:
 Loot ledger — Bobby (Bobbo - Whitemane)
 Generated 2026-06-10 14:32 UTC
 
-#12 | Ashkandi, Greatsword of the Brotherhood | 1,500g | unpaid | 2026-06-09
-#10 | Netherwind Crown | 800g | paid | 2026-06-05
+#12 | Ashkandi, Greatsword of the Brotherhood | 1,500 pts | unpaid | 2026-06-09
+#10 | Netherwind Crown | 800 pts | paid | 2026-06-05
 
 Won auctions: 2
-Total owed (unpaid): 1,500g
-Settled (paid/traded): 800g
+Total owed (unpaid): 1,500 pts
+Settled (paid/traded): 800 pts
 
-Settlement is in-game gold/trade only — no real-money payments.
+Settlement is guild points/trade only — no real-money payments.
 ```
 
 ### Raid payout reports (`/payout`)
@@ -144,7 +144,7 @@ Acess | Gruul | 8.80
 包子 | SSC+TK | 0 | 41.74 | melee #2
 total = 8568        # optional: expected grand total for the check line
 title = Week 23     # optional report title
-unit = gold         # optional in-game unit: gold (default), dkp, points
+unit = points       # optional in-game unit: points, dkp, gold (defaults to CURRENCY_UNIT)
 ```
 
 The bot replies with an alphabetically sorted report (zh locale-aware
@@ -154,8 +154,8 @@ affected player only, and a final `Check：… ✅/❌` line verifying that
 individual totals add up to the expected total. Long reports arrive as a
 `.txt` attachment.
 
-Amounts can be denominated in any **in-game** unit: `gold` (default), `dkp`,
-or `points`. Real-money currencies (RMB/USD/etc.) are deliberately rejected
+Amounts can be denominated in any **in-game** unit: `points` (default), `dkp`,
+or `gold`. Real-money currencies (RMB/USD/etc.) are deliberately rejected
 by the parser — the bot has no real-money denomination, payment tracking, or
 split calculation. See Non-goals.
 
@@ -193,7 +193,7 @@ shows the command pre-selected for Ctrl+C.
 1. Hover an item tooltip (bag, loot window, or a chat link you clicked).
 2. Press your keybinding.
 3. A box pops up with
-   `/auction start item_link:"|cffa335ee|Hitem:19364::::::::|h[Ashkandi, ...]|h|r" start:1000 min_increment:100 duration_minutes:60`
+   `/auction start item_link:"|cffa335ee|Hitem:19364::::::::|h[Ashkandi, ...]|h|r" start:100 min_increment:10 duration_minutes:60`
    pre-selected — press **Ctrl+C**, then paste into Discord and adjust the
    numbers. Defaults are constants at the top of `AuctionBridge.lua`.
 
