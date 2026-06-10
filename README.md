@@ -22,7 +22,9 @@ ledger shows who still owes what.
   bid with quick-bid buttons (explicit `/bid` raises are allowed)
 - Officer-only close/cancel/settle/void, all written to an audit log
 - Full bid history per auction; voided bids are marked, never deleted
-- `/ledger` per user: won items, totals owed, paid/traded status
+- `/ledger` per user: won items, totals owed, paid/traded status — with a
+  `format:text` mode that produces a copyable plain-text report for sharing
+  outside Discord (WeChat, QQ, forums, spreadsheets)
 - SQLite persistence — active auctions survive bot restarts (expired ones are
   closed on startup)
 - Optional **AuctionBridge** WoW addon: hover an item in game, press a
@@ -90,12 +92,34 @@ npm run deploy-commands
 | `/auction history auction_id:<id>` | anyone | Full bid history (voided bids shown struck through) |
 | `/auction voidbid bid_id:<id> reason:<text>` | officers | Soft-void a bid on an active auction and recompute the price |
 | `/settle auction_id:<id> status:<unpaid\|paid\|traded\|cancelled>` | officers | Update settlement status |
-| `/ledger [user]` | anyone | Won auctions, total owed, settlement status |
+| `/ledger [user] [format:embed\|text]` | anyone | Won auctions, total owed, settlement status. `format:text` returns a copyable plain-text report |
 
 "Officers" = members with one of the `OFFICER_ROLES` role names (default
 **Raid Leader** or **Auctioneer**) or server administrators. All officer
 actions (start/close/cancel/settle/void) and automatic closes/extensions are
 written to the `audit_log` table.
+
+### Sharing reports outside Discord
+
+`/ledger user:@someone format:text` renders the ledger as plain text inside a
+code block — no Discord mentions or markup — so it reads correctly anywhere.
+On Discord mobile, tap the code block to copy it, then paste into WeChat, QQ,
+guild forums, or a spreadsheet. Reports too long for one Discord message are
+attached as a `.txt` file you can forward instead. Example output:
+
+```text
+Loot ledger — Bobby (Bobbo - Whitemane)
+Generated 2026-06-10 14:32 UTC
+
+#12 | Ashkandi, Greatsword of the Brotherhood | 1,500g | unpaid | 2026-06-09
+#10 | Netherwind Crown | 800g | paid | 2026-06-05
+
+Won auctions: 2
+Total owed (unpaid): 1,500g
+Settled (paid/traded): 800g
+
+Settlement is in-game gold/trade only — no real-money payments.
+```
 
 ### Auction rules
 

@@ -19,7 +19,8 @@ src/
     auction.ts           /auction start|close|cancel|history|voidbid
     bid.ts               /bid — explicit bid by auction id
     settle.ts            /settle — settlement status updates
-    ledger.ts            /ledger — won auctions and totals per user
+    ledger.ts            /ledger — won auctions and totals per user, embed or
+                         copyable plain-text report (format:text)
   db/
     index.ts             openDatabase(): better-sqlite3 + WAL + foreign keys
     schema.ts            Idempotent CREATE TABLE IF NOT EXISTS migrations
@@ -29,6 +30,7 @@ src/
                          ledger queries, user registration
     items.ts             Item input resolution and persistence
     audit.ts             Append-only audit log
+    reports.ts           Plain-text ledger reports for sharing outside Discord
   discord/               Everything that touches discord.js
     embeds.ts            Auction card embed + button rows
     interactions.ts      Button and modal routing
@@ -37,6 +39,7 @@ src/
     permissions.ts       Officer role checks, registration checks
   utils/
     wowItemParser.ts     Hitem-link/id parsing, Wowhead URLs
+    format.ts            Gold amount formatting (shared by services and discord)
 addon/AuctionBridge/     In-game helper that copies a /auction start command
 tests/                   Vitest suites + discord.js fakes (tests/fakes.ts)
 ```

@@ -125,6 +125,7 @@ export interface FakeReplyPayload {
   flags?: number;
   embeds?: unknown[];
   components?: unknown[];
+  files?: unknown[];
 }
 
 export interface FakeUser {

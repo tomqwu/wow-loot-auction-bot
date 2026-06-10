@@ -13,9 +13,9 @@ const STATUS_COLORS: Record<AuctionRow['status'], number> = {
   cancelled: 0x95a5a6,
 };
 
-export function formatGold(amount: number): string {
-  return `${amount.toLocaleString('en-US')}g`;
-}
+import { formatGold } from '../utils/format';
+
+export { formatGold };
 
 export interface AuctionEmbedData {
   auction: AuctionRow;
