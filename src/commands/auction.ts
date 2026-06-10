@@ -205,16 +205,22 @@ async function handleHistory(...[interaction, ctx]: CommandArgs): Promise<void> 
     await interaction.reply({ content: `Auction #${auctionId} has no bids yet.` });
     return;
   }
-  const shown = bids.slice(-HISTORY_DISPLAY_LIMIT);
-  const lines = shown.map((bid) => {
+  const allLines = bids.map((bid) => {
     const line = `\`#${bid.id}\` **${formatGold(bid.amount)}** — <@${bid.user_id}> — <t:${Math.floor(bid.created_at / 1000)}:f>`;
     return bid.voided ? `~~${line}~~ *(voided: ${bid.void_reason ?? 'no reason'})*` : line;
   });
-  const omitted = bids.length - shown.length;
+  // Keep the most recent bids; Discord message content caps at 2000 characters.
+  let start = Math.max(0, allLines.length - HISTORY_DISPLAY_LIMIT);
+  let body = allLines.slice(start).join('\n');
+  while (body.length > 1800 && start < allLines.length - 1) {
+    start += 1;
+    body = allLines.slice(start).join('\n');
+  }
+  const omitted = start;
   const header = `**Bid history for auction #${auctionId}** (${bids.length} bid${bids.length === 1 ? '' : 's'}, status: ${auction.status})`;
   const footer = omitted > 0 ? `\n*…and ${omitted} earlier bid(s) not shown.*` : '';
   await interaction.reply({
-    content: `${header}\n${lines.join('\n')}${footer}`,
+    content: `${header}\n${body}${footer}`,
     allowedMentions: { parse: [] },
   });
 }

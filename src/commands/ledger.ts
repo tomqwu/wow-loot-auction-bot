@@ -29,12 +29,19 @@ export const ledgerCommand: BotCommand = {
     if (ledger.entries.length === 0) {
       embed.addFields({ name: 'Won auctions', value: 'None yet.' });
     } else {
-      const shown = ledger.entries.slice(0, LEDGER_DISPLAY_LIMIT);
-      const lines = shown.map(
-        (entry) =>
-          `#${entry.auction_id} — **${entry.item_name}** — ${formatGold(entry.final_price)} — *${entry.settlement_status}*`
-      );
-      const omitted = ledger.entries.length - shown.length;
+      // Discord embed field values cap at 1024 characters.
+      const lines: string[] = [];
+      let omitted = 0;
+      let used = 0;
+      for (const [index, entry] of ledger.entries.entries()) {
+        const line = `#${entry.auction_id} — **${entry.item_name}** — ${formatGold(entry.final_price)} — *${entry.settlement_status}*`;
+        if (index >= LEDGER_DISPLAY_LIMIT || used + line.length + 1 > 950) {
+          omitted = ledger.entries.length - index;
+          break;
+        }
+        lines.push(line);
+        used += line.length + 1;
+      }
       if (omitted > 0) lines.push(`…and ${omitted} more.`);
       embed.addFields(
         { name: `Won auctions (${ledger.entries.length})`, value: lines.join('\n') },

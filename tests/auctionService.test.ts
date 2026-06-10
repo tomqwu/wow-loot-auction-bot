@@ -86,6 +86,27 @@ describe('item resolution', () => {
     expect(resolveItem({ itemLink: 'hello world' }, 'classic').ok).toBe(false);
   });
 
+  it('falls back to "Item <id>" for links without a bracketed name', () => {
+    expect(resolveItem({ itemLink: 'Hitem:19364' }, 'classic')).toMatchObject({
+      ok: true,
+      item: { itemId: 19364, itemName: 'Item 19364' },
+    });
+  });
+
+  it('rejects an unparseable item id', () => {
+    expect(resolveItem({ itemId: 'not-a-number' }, 'classic')).toMatchObject({
+      ok: false,
+      error: expect.stringContaining('not-a-number'),
+    });
+  });
+
+  it('resolves a name-only item without id or wowhead link', () => {
+    expect(resolveItem({ itemName: 'Mystery Loot' }, 'classic')).toMatchObject({
+      ok: true,
+      item: { itemId: null, itemName: 'Mystery Loot', wowheadUrl: null },
+    });
+  });
+
   it('rejects mismatched item_id and item_link', () => {
     expect(resolveItem({ itemId: '123', itemLink: ASHKANDI_LINK }, 'classic').ok).toBe(false);
   });

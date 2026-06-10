@@ -63,6 +63,7 @@ export function resolveItem(input: ItemInput, gameVersion: string): ItemResoluti
   }
 
   const itemName = explicitName ?? parsedName ?? (itemId !== null ? `Item ${itemId}` : null);
+  /* v8 ignore next 3 -- unreachable: some input is always present here, and invalid links/ids already errored out above */
   if (!itemName) {
     return { ok: false, error: 'Could not determine an item name.' };
   }
