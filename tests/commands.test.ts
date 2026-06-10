@@ -1,9 +1,10 @@
-import { AttachmentBuilder } from 'discord.js';
+import { AttachmentBuilder, type ModalBuilder } from 'discord.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { commandList, commands } from '../src/commands';
 import { auctionCommand } from '../src/commands/auction';
 import { bidCommand } from '../src/commands/bid';
 import { ledgerCommand } from '../src/commands/ledger';
+import { payoutCommand } from '../src/commands/payout';
 import { registerCommand } from '../src/commands/register';
 import { settleCommand } from '../src/commands/settle';
 import { getAuditLog } from '../src/services/audit';
@@ -53,9 +54,35 @@ afterEach(() => {
 });
 
 describe('command registry', () => {
-  it('exposes all five commands by name', () => {
-    expect([...commands.keys()].sort()).toEqual(['auction', 'bid', 'ledger', 'register', 'settle']);
-    expect(commandList).toHaveLength(5);
+  it('exposes all six commands by name', () => {
+    expect([...commands.keys()].sort()).toEqual([
+      'auction',
+      'bid',
+      'ledger',
+      'payout',
+      'register',
+      'settle',
+    ]);
+    expect(commandList).toHaveLength(6);
+  });
+});
+
+describe('/payout', () => {
+  it('rejects non-officers', async () => {
+    const ctx = context();
+    const interaction = makeChatInteraction({ member: makeMember(['Member']) });
+    await payoutCommand.execute(asChatInput(interaction), ctx);
+    expect(interaction.replies[0]?.content).toContain('Only officers');
+    expect(interaction.showModal).not.toHaveBeenCalled();
+  });
+
+  it('opens the payout entry modal for officers', async () => {
+    const ctx = context();
+    const interaction = makeChatInteraction({ member: OFFICER() });
+    await payoutCommand.execute(asChatInput(interaction), ctx);
+    expect(interaction.replies).toHaveLength(0);
+    const modal = interaction.showModal.mock.calls[0]![0] as ModalBuilder;
+    expect(modal.toJSON().custom_id).toBe('payoutmodal');
   });
 });
 

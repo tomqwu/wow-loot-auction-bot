@@ -1,4 +1,4 @@
-import type { ButtonInteraction, ModalSubmitInteraction } from 'discord.js';
+import { AttachmentBuilder, type ButtonInteraction, type ModalSubmitInteraction } from 'discord.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleButton, handleModal } from '../src/discord/interactions';
 import { getAuction, getHighestBid, placeBid, upsertUser } from '../src/services/auctions';
@@ -258,5 +258,57 @@ describe('handleModal', () => {
     await handleModal(asModal(interaction), ctx);
 
     expect(getHighestBid(ctx.db, auction.id)).toMatchObject({ user_id: 'user-1', amount: 1600 });
+  });
+});
+
+describe('payout modal', () => {
+  it('formats pasted entries into a copyable report', async () => {
+    const ctx = context();
+    const entries = [
+      'Zhw | SSC+TK | 283.83 | 83.48 | melee #1',
+      'Acess | SSC+TK | 283.83 | 83.48 | ranged #1 | collected by Nautile',
+      'Acess | Gruul | 8.80',
+      'total = 785.16',
+    ].join('\n');
+    const interaction = makeModalInteraction('payoutmodal', entries);
+
+    await handleModal(asModal(interaction), ctx);
+
+    const content = interaction.replies[0]!.content!;
+    expect(content.startsWith('```text\n')).toBe(true);
+    expect(content).toContain('Acess：376.11g');
+    expect(content).toContain('Check：743.42g paid ≠ 785.16g expected ❌（difference 41.74g）');
+  });
+
+  it('reports parse errors ephemerally, truncated to ten', async () => {
+    const ctx = context();
+    const badLines = Array.from({ length: 12 }, (_, i) => `player${i} | raid | not-a-number`);
+    const interaction = makeModalInteraction('payoutmodal', badLines.join('\n'));
+
+    await handleModal(asModal(interaction), ctx);
+
+    const reply = interaction.replies[0]!;
+    expect(reply.content).toContain('Could not parse');
+    expect(reply.content).toContain('Line 1');
+    expect(reply.content).toContain('…and 2 more.');
+    expect(reply.flags).toBeDefined();
+  });
+
+  it('attaches long reports as a text file', async () => {
+    const ctx = context();
+    const entries = Array.from(
+      { length: 40 },
+      (_, i) => `RaiderWithALongName${i} | SSC+TK | 283.83 | 83.48 | healer subsidy`
+    ).join('\n');
+    const interaction = makeModalInteraction('payoutmodal', entries);
+
+    await handleModal(asModal(interaction), ctx);
+
+    const reply = interaction.replies[0]!;
+    expect(reply.content).toContain('attached');
+    const file = reply.files?.[0] as AttachmentBuilder;
+    expect(file).toBeInstanceOf(AttachmentBuilder);
+    expect(file.name).toBe('payout-report.txt');
+    expect((file.attachment as Buffer).toString('utf8')).toContain('Players：40');
   });
 });

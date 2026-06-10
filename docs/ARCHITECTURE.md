@@ -21,6 +21,8 @@ src/
     settle.ts            /settle — settlement status updates
     ledger.ts            /ledger — won auctions and totals per user, embed or
                          copyable plain-text report (format:text)
+    payout.ts            /payout — modal for pasting final per-player gold
+                         amounts (no split math)
   db/
     index.ts             openDatabase(): better-sqlite3 + WAL + foreign keys
     schema.ts            Idempotent CREATE TABLE IF NOT EXISTS migrations
@@ -31,12 +33,15 @@ src/
     items.ts             Item input resolution and persistence
     audit.ts             Append-only audit log
     reports.ts           Plain-text ledger reports for sharing outside Discord
+    payoutReport.ts      Parser + formatter for officer-entered payout numbers
+                         (formats only; computes no splits, gold amounts only)
   discord/               Everything that touches discord.js
     embeds.ts            Auction card embed + button rows
     interactions.ts      Button and modal routing
     lifecycle.ts         AppContext, AuctionScheduler (timers), embed refresh,
                          shared bid/close flows
     permissions.ts       Officer role checks, registration checks
+    textReport.ts        Code-block-or-.txt-attachment reply helper
   utils/
     wowItemParser.ts     Hitem-link/id parsing, Wowhead URLs
     format.ts            Gold amount formatting (shared by services and discord)

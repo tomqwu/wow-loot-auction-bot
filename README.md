@@ -93,6 +93,7 @@ npm run deploy-commands
 | `/auction voidbid bid_id:<id> reason:<text>` | officers | Soft-void a bid on an active auction and recompute the price |
 | `/settle auction_id:<id> status:<unpaid\|paid\|traded\|cancelled>` | officers | Update settlement status |
 | `/ledger [user] [format:embed\|text]` | anyone | Won auctions, total owed, settlement status. `format:text` returns a copyable plain-text report |
+| `/payout` | officers | Paste final per-player gold amounts, get a formatted copyable payout report (no split math) |
 
 "Officers" = members with one of the `OFFICER_ROLES` role names (default
 **Raid Leader** or **Auctioneer**) or server administrators. All officer
@@ -120,6 +121,33 @@ Settled (paid/traded): 800g
 
 Settlement is in-game gold/trade only — no real-money payments.
 ```
+
+### Raid payout reports (`/payout`)
+
+For gold-split raid weeks, officers can format the final per-player numbers
+into the same kind of copyable report. **The bot does no split math** — you
+compute the split however your guild likes and paste one line per player per
+raid into the `/payout` modal:
+
+```text
+# player | raid | base | subsidy | reason | note
+Acess | SSC+TK | 283.83 | 83.48 | ranged #1 | collected by Nautile
+Acess | Gruul | 8.80
+包子 | SSC+TK | 0 | 41.74 | melee #2
+total = 8568        # optional: expected grand total for the check line
+title = Week 23     # optional report title
+```
+
+The bot replies with an alphabetically sorted report (zh locale-aware
+collation for CJK names): per-raid subtotals kept separate per player (so
+raids played by a proxy are visible), base/subsidy totals, notes under the
+affected player only, and a final `Check：… ✅/❌` line verifying that
+individual totals add up to the expected total. Long reports arrive as a
+`.txt` attachment.
+
+All amounts are in-game gold. The bot intentionally has no real-money
+(RMB/USD/etc.) denomination, payment tracking, or split calculation —
+see Non-goals.
 
 ### Auction rules
 

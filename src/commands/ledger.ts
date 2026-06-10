@@ -1,13 +1,11 @@
-import { AttachmentBuilder, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { formatGold } from '../discord/embeds';
+import { textReportPayload } from '../discord/textReport';
 import { getLedger, getUser } from '../services/auctions';
 import { buildLedgerTextReport } from '../services/reports';
 import type { BotCommand } from './types';
 
 const LEDGER_DISPLAY_LIMIT = 20;
-// Discord message content caps at 2000 characters; leave headroom for the
-// code fence.
-const INLINE_REPORT_LIMIT = 1900;
 
 export const ledgerCommand: BotCommand = {
   data: new SlashCommandBuilder()
@@ -30,18 +28,13 @@ export const ledgerCommand: BotCommand = {
 
     if (interaction.options.getString('format') === 'text') {
       const report = buildLedgerTextReport({ displayName, character: registered, ledger });
-      const block = '```text\n' + report + '\n```';
-      if (block.length <= INLINE_REPORT_LIMIT) {
-        await interaction.reply({ content: block, allowedMentions: { parse: [] } });
-      } else {
-        await interaction.reply({
-          content: `Ledger for **${displayName}** attached as a text file (too long to show inline).`,
-          files: [
-            new AttachmentBuilder(Buffer.from(report, 'utf8'), { name: `ledger-${target.id}.txt` }),
-          ],
-          allowedMentions: { parse: [] },
-        });
-      }
+      await interaction.reply(
+        textReportPayload(
+          report,
+          `ledger-${target.id}.txt`,
+          `Ledger for **${displayName}** attached as a text file (too long to show inline).`
+        )
+      );
       return;
     }
 
