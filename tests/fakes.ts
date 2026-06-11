@@ -24,6 +24,7 @@ export const TEST_CONFIG: BotConfig = {
   sqlitePath: ':memory:',
   officerRoles: ['Raid Leader', 'Auctioneer'],
   gameVersion: 'classic',
+  currencyUnit: 'gold',
 };
 
 export interface FakeMessage {

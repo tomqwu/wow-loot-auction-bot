@@ -66,6 +66,7 @@ describe('buildAuctionEmbed', () => {
       item: makeItem(),
       highestBid: null,
       bidCount: 0,
+      unit: 'gold',
     });
     const json = embed.toJSON();
     expect(json.title).toBe('Auction #7 — Ashkandi, Greatsword of the Brotherhood');
@@ -83,6 +84,7 @@ describe('buildAuctionEmbed', () => {
       item: makeItem(),
       highestBid: HIGH_BID,
       bidCount: 2,
+      unit: 'gold',
     });
     expect(fieldValue(embed, 'Current bid')).toBe('1,500g by <@bob>');
     expect(fieldValue(embed, 'Next minimum bid')).toBe('1,600g');
@@ -95,6 +97,7 @@ describe('buildAuctionEmbed', () => {
       item: makeItem({ item_id: null, wowhead_url: null, item_name: 'Mystery Loot' }),
       highestBid: null,
       bidCount: 0,
+      unit: 'gold',
     });
     expect(fieldValue(embed, 'Item')).toBe('Mystery Loot');
     expect(fieldValue(embed, 'Item ID')).toBe('—');
@@ -106,6 +109,7 @@ describe('buildAuctionEmbed', () => {
       item: makeItem(),
       highestBid: HIGH_BID,
       bidCount: 2,
+      unit: 'gold',
     });
     expect(fieldValue(embed, 'Winner')).toBe('<@bob> at 1,500g');
     expect(fieldValue(embed, 'Status')).toBe('closed');
@@ -117,6 +121,7 @@ describe('buildAuctionEmbed', () => {
       item: makeItem(),
       highestBid: null,
       bidCount: 0,
+      unit: 'gold',
     });
     expect(fieldValue(embed, 'Winner')).toBe('No bids — no winner');
   });
@@ -127,8 +132,22 @@ describe('buildAuctionEmbed', () => {
       item: makeItem(),
       highestBid: null,
       bidCount: 1,
+      unit: 'gold',
     });
     expect(fieldValue(embed, 'Result')).toBe('Auction cancelled — no winner.');
+  });
+
+  it('renders amounts and the footer in the configured currency unit', () => {
+    const embed = buildAuctionEmbed({
+      auction: makeAuction({ current_price: 1500 }),
+      item: makeItem(),
+      highestBid: HIGH_BID,
+      bidCount: 2,
+      unit: 'dkp',
+    });
+    expect(fieldValue(embed, 'Current bid')).toBe('1,500 DKP by <@bob>');
+    expect(fieldValue(embed, 'Next minimum bid')).toBe('1,600 DKP');
+    expect(embed.toJSON().footer?.text).toContain('DKP points only');
   });
 });
 
@@ -142,12 +161,12 @@ describe('buildAuctionButtons', () => {
     }>;
     expect(buttons.map((b) => b.custom_id)).toEqual([
       'bid:min:7',
-      'bid:500:7',
-      'bid:1000:7',
+      'bid:x5:7',
+      'bid:x10:7',
       'bid:custom:7',
       'auction:close:7',
     ]);
-    expect(buttons.map((b) => b.label)).toEqual(['+100', '+500', '+1000', 'Custom bid', 'Close auction']);
+    expect(buttons.map((b) => b.label)).toEqual(['+100', '+500', '+1,000', 'Custom bid', 'Close auction']);
     expect(buttons.every((b) => !b.disabled)).toBe(true);
   });
 
@@ -155,5 +174,11 @@ describe('buildAuctionButtons', () => {
     const [row] = buildAuctionButtons(makeAuction({ status: 'closed' }));
     const buttons = row!.toJSON().components as Array<{ disabled?: boolean }>;
     expect(buttons.every((b) => b.disabled)).toBe(true);
+  });
+
+  it('scales quick-bid labels with the auction increment', () => {
+    const [row] = buildAuctionButtons(makeAuction({ min_increment: 5 }));
+    const buttons = row!.toJSON().components as Array<{ label?: string }>;
+    expect(buttons.slice(0, 3).map((b) => b.label)).toEqual(['+5', '+25', '+50']);
   });
 });

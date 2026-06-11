@@ -1,8 +1,8 @@
 import { EmbedBuilder, SlashCommandBuilder } from 'discord.js';
-import { formatGold } from '../discord/embeds';
 import { textReportPayload } from '../discord/textReport';
 import { getLedger, getUser } from '../services/auctions';
 import { buildLedgerTextReport } from '../services/reports';
+import { formatAmount, unitLabel } from '../utils/format';
 import type { BotCommand } from './types';
 
 const LEDGER_DISPLAY_LIMIT = 20;
@@ -25,9 +25,10 @@ export const ledgerCommand: BotCommand = {
     const ledger = getLedger(ctx.db, target.id);
     const registered = getUser(ctx.db, target.id);
     const displayName = target.displayName ?? target.username;
+    const unit = ctx.config.currencyUnit;
 
     if (interaction.options.getString('format') === 'text') {
-      const report = buildLedgerTextReport({ displayName, character: registered, ledger });
+      const report = buildLedgerTextReport({ displayName, character: registered, ledger, unit });
       await interaction.reply(
         textReportPayload(
           report,
@@ -41,7 +42,7 @@ export const ledgerCommand: BotCommand = {
     const embed = new EmbedBuilder()
       .setColor(ledger.totalOwed > 0 ? 0xe74c3c : 0x2ecc71)
       .setTitle(`Loot ledger — ${displayName}`)
-      .setFooter({ text: 'Settlement is in-game gold/trade only.' });
+      .setFooter({ text: `Settlement is ${unitLabel(unit)}/trade only.` });
 
     if (registered) {
       embed.setDescription(`Character: **${registered.character_name}** — ${registered.realm}`);
@@ -55,7 +56,7 @@ export const ledgerCommand: BotCommand = {
       let omitted = 0;
       let used = 0;
       for (const [index, entry] of ledger.entries.entries()) {
-        const line = `#${entry.auction_id} — **${entry.item_name}** — ${formatGold(entry.final_price)} — *${entry.settlement_status}*`;
+        const line = `#${entry.auction_id} — **${entry.item_name}** — ${formatAmount(entry.final_price, unit)} — *${entry.settlement_status}*`;
         if (index >= LEDGER_DISPLAY_LIMIT || used + line.length + 1 > 950) {
           omitted = ledger.entries.length - index;
           break;
@@ -66,8 +67,8 @@ export const ledgerCommand: BotCommand = {
       if (omitted > 0) lines.push(`…and ${omitted} more.`);
       embed.addFields(
         { name: `Won auctions (${ledger.entries.length})`, value: lines.join('\n') },
-        { name: 'Total owed (unpaid)', value: formatGold(ledger.totalOwed), inline: true },
-        { name: 'Settled (paid/traded)', value: formatGold(ledger.totalSettled), inline: true }
+        { name: 'Total owed (unpaid)', value: formatAmount(ledger.totalOwed, unit), inline: true },
+        { name: 'Settled (paid/traded)', value: formatAmount(ledger.totalSettled, unit), inline: true }
       );
     }
 

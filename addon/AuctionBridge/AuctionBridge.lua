@@ -7,9 +7,10 @@
 BINDING_HEADER_AUCTIONBRIDGE = "AuctionBridge"
 BINDING_NAME_AUCTIONBRIDGE_CAPTURE = "Capture hovered item for auction"
 
--- Default values inserted into the generated command. Tweak to taste.
-local DEFAULT_START = 1000
-local DEFAULT_MIN_INCREMENT = 100
+-- Default values inserted into the generated command (point-scale; tweak to
+-- taste — e.g. raise them if your guild bids in gold).
+local DEFAULT_START = 100
+local DEFAULT_MIN_INCREMENT = 10
 local DEFAULT_DURATION_MINUTES = 60
 
 local copyFrame, copyEditBox, currentText

@@ -6,14 +6,14 @@ import type { BotCommand } from './types';
 export const bidCommand: BotCommand = {
   data: new SlashCommandBuilder()
     .setName('bid')
-    .setDescription('Place a bid on a loot auction (amount in gold)')
+    .setDescription('Place a bid on a loot auction')
     .addIntegerOption((option) =>
       option.setName('auction_id').setDescription('Auction ID').setRequired(true).setMinValue(1)
     )
     .addIntegerOption((option) =>
       option
         .setName('amount')
-        .setDescription('Bid amount in gold')
+        .setDescription('Bid amount (in the unit shown on the auction card)')
         .setRequired(true)
         .setMinValue(1)
     ),

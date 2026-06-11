@@ -78,6 +78,10 @@ describe('parsePayoutEntries', () => {
     });
     expect(parsePayoutEntries('Acess | SSC+TK | 100')).toMatchObject({
       ok: true,
+      input: { unit: 'points' },
+    });
+    expect(parsePayoutEntries('Acess | SSC+TK | 100', 'gold')).toMatchObject({
+      ok: true,
       input: { unit: 'gold' },
     });
   });
@@ -94,7 +98,8 @@ describe('parsePayoutEntries', () => {
 });
 
 function build(text: string, nowMs = NOW): string {
-  const parsed = parsePayoutEntries(text);
+  // Pin gold so amount assertions stay unit-stable regardless of the default.
+  const parsed = parsePayoutEntries(text, 'gold');
   if (!parsed.ok) throw new Error(parsed.errors.join('; '));
   return buildPayoutReport(parsed.input, nowMs);
 }

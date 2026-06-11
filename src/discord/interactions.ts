@@ -14,11 +14,10 @@ import {
   minimumAcceptableBid,
 } from '../services/auctions';
 import { buildPayoutReport, parsePayoutEntries } from '../services/payoutReport';
+import { QUICK_BID_MULTIPLIERS } from './embeds';
 import { executeBidFlow, executeCloseFlow, type AppContext } from './lifecycle';
 import { requireOfficer, requireRegistered } from './permissions';
 import { textReportPayload } from './textReport';
-
-const QUICK_BID_DELTAS: Record<string, number> = { '500': 500, '1000': 1000 };
 
 export async function handleButton(interaction: ButtonInteraction, ctx: AppContext): Promise<void> {
   const [scope, action, idRaw] = interaction.customId.split(':');
@@ -54,7 +53,7 @@ export async function handleButton(interaction: ButtonInteraction, ctx: AppConte
         new ActionRowBuilder<TextInputBuilder>().addComponents(
           new TextInputBuilder()
             .setCustomId('amount')
-            .setLabel('Bid amount in gold (whole number)')
+            .setLabel('Bid amount (whole number)')
             .setStyle(TextInputStyle.Short)
             .setRequired(true)
             .setMaxLength(10)
@@ -85,10 +84,10 @@ export async function handleButton(interaction: ButtonInteraction, ctx: AppConte
   if (action === 'min') {
     amount = nextMinimum;
   } else {
-    const delta = QUICK_BID_DELTAS[action];
-    if (delta === undefined) return;
+    const multiplier = Number(action.match(/^x(\d+)$/)?.[1]);
+    if (!(QUICK_BID_MULTIPLIERS as readonly number[]).includes(multiplier)) return;
     const base = highestBid ? auction.current_price : auction.start_price;
-    amount = Math.max(nextMinimum, base + delta);
+    amount = Math.max(nextMinimum, base + multiplier * auction.min_increment);
   }
 
   const result = await executeBidFlow(ctx, {
@@ -100,8 +99,14 @@ export async function handleButton(interaction: ButtonInteraction, ctx: AppConte
   await interaction.reply({ content: result.message, flags: MessageFlags.Ephemeral });
 }
 
-async function handlePayoutModal(interaction: ModalSubmitInteraction): Promise<void> {
-  const parsed = parsePayoutEntries(interaction.fields.getTextInputValue('entries'));
+async function handlePayoutModal(
+  interaction: ModalSubmitInteraction,
+  ctx: AppContext
+): Promise<void> {
+  const parsed = parsePayoutEntries(
+    interaction.fields.getTextInputValue('entries'),
+    ctx.config.currencyUnit
+  );
   if (!parsed.ok) {
     const shown = parsed.errors.slice(0, 10);
     const omitted = parsed.errors.length - shown.length;
@@ -129,7 +134,7 @@ export async function handleModal(
 ): Promise<void> {
   const [scope, idRaw] = interaction.customId.split(':');
   if (scope === PAYOUT_MODAL_ID) {
-    await handlePayoutModal(interaction);
+    await handlePayoutModal(interaction, ctx);
     return;
   }
   if (scope !== 'bidmodal') return;
@@ -146,7 +151,7 @@ export async function handleModal(
   const amount = /^\d+$/.test(raw) ? Number(raw) : NaN;
   if (!Number.isSafeInteger(amount) || amount <= 0) {
     await interaction.reply({
-      content: `"${raw || interaction.fields.getTextInputValue('amount')}" is not a valid bid. Enter a positive whole number of gold.`,
+      content: `"${raw || interaction.fields.getTextInputValue('amount')}" is not a valid bid. Enter a positive whole number.`,
       flags: MessageFlags.Ephemeral,
     });
     return;

@@ -19,6 +19,8 @@
  * deliberately rejected — the bot does not do real-money payment tracking.
  */
 
+import { CURRENCY_UNITS, DEFAULT_CURRENCY_UNIT, type CurrencyUnit } from '../utils/format';
+
 export interface PayoutLine {
   player: string;
   source: string;
@@ -28,13 +30,9 @@ export interface PayoutLine {
   note: string | null;
 }
 
-export const PAYOUT_UNITS = {
-  gold: { suffix: 'g', label: 'in-game gold' },
-  dkp: { suffix: ' DKP', label: 'DKP points' },
-  points: { suffix: ' pts', label: 'guild points' },
-} as const;
+export const PAYOUT_UNITS = CURRENCY_UNITS;
 
-export type PayoutUnit = keyof typeof PAYOUT_UNITS;
+export type PayoutUnit = CurrencyUnit;
 
 export interface PayoutInput {
   lines: PayoutLine[];
@@ -53,12 +51,15 @@ function parseAmount(raw: string): number | null {
   return Number(cleaned);
 }
 
-export function parsePayoutEntries(raw: string): PayoutParseResult {
+export function parsePayoutEntries(
+  raw: string,
+  defaultUnit: PayoutUnit = DEFAULT_CURRENCY_UNIT
+): PayoutParseResult {
   const lines: PayoutLine[] = [];
   const errors: string[] = [];
   let expectedTotal: number | null = null;
   let title: string | null = null;
-  let unit: PayoutUnit = 'gold';
+  let unit: PayoutUnit = defaultUnit;
 
   raw.split(/\r?\n/).forEach((rawLine, index) => {
     const line = rawLine.trim();

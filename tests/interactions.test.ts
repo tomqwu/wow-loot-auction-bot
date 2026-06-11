@@ -159,40 +159,53 @@ describe('handleButton', () => {
     expect(getHighestBid(ctx.db, auction.id)).toMatchObject({ user_id: 'user-1', amount: 1600 });
   });
 
-  it('+500 adds 500 to the current price', async () => {
+  it('x5 adds five increments to the current price', async () => {
     const ctx = context();
     const auction = seedAuction(ctx);
     upsertUser(ctx.db, 'user-1', 'Char', 'Realm');
     placeBid(ctx.db, { auctionId: auction.id, userId: 'bob', amount: 1500, allowSelfRaise: true, nowMs: NOW });
-    const interaction = makeButtonInteraction(`bid:500:${auction.id}`);
+    const interaction = makeButtonInteraction(`bid:x5:${auction.id}`);
+
+    await handleButton(asButton(interaction), ctx);
+
+    // current 1500 + 5 × increment 100 = 2000.
+    expect(getHighestBid(ctx.db, auction.id)).toMatchObject({ amount: 2000 });
+  });
+
+  it('x10 on a fresh auction bids start price + ten increments', async () => {
+    const ctx = context();
+    const auction = seedAuction(ctx);
+    upsertUser(ctx.db, 'user-1', 'Char', 'Realm');
+    const interaction = makeButtonInteraction(`bid:x10:${auction.id}`);
 
     await handleButton(asButton(interaction), ctx);
 
     expect(getHighestBid(ctx.db, auction.id)).toMatchObject({ amount: 2000 });
   });
 
-  it('+1000 on a fresh auction bids start price + 1000', async () => {
+  it('quick-bid deltas scale with point-sized increments', async () => {
+    const ctx = context();
+    const auction = seedAuction(ctx, { startPrice: 50, minIncrement: 5 });
+    upsertUser(ctx.db, 'user-1', 'Char', 'Realm');
+    placeBid(ctx.db, { auctionId: auction.id, userId: 'bob', amount: 50, allowSelfRaise: true, nowMs: NOW });
+    const interaction = makeButtonInteraction(`bid:x5:${auction.id}`);
+
+    await handleButton(asButton(interaction), ctx);
+
+    // current 50 + 5 × increment 5 = 75.
+    expect(getHighestBid(ctx.db, auction.id)).toMatchObject({ amount: 75 });
+  });
+
+  it('ignores forged quick-bid multipliers', async () => {
     const ctx = context();
     const auction = seedAuction(ctx);
     upsertUser(ctx.db, 'user-1', 'Char', 'Realm');
-    const interaction = makeButtonInteraction(`bid:1000:${auction.id}`);
+    const interaction = makeButtonInteraction(`bid:x999:${auction.id}`);
 
     await handleButton(asButton(interaction), ctx);
 
-    expect(getHighestBid(ctx.db, auction.id)).toMatchObject({ amount: 2000 });
-  });
-
-  it('quick buttons never bid below the minimum when the increment exceeds the delta', async () => {
-    const ctx = context();
-    const auction = seedAuction(ctx, { minIncrement: 800 });
-    upsertUser(ctx.db, 'user-1', 'Char', 'Realm');
-    placeBid(ctx.db, { auctionId: auction.id, userId: 'bob', amount: 1500, allowSelfRaise: true, nowMs: NOW });
-    const interaction = makeButtonInteraction(`bid:500:${auction.id}`);
-
-    await handleButton(asButton(interaction), ctx);
-
-    // current 1500 + delta 500 = 2000 < minimum 2300, so the minimum wins.
-    expect(getHighestBid(ctx.db, auction.id)).toMatchObject({ amount: 2300 });
+    expect(interaction.reply).not.toHaveBeenCalled();
+    expect(getHighestBid(ctx.db, auction.id)).toBeUndefined();
   });
 
   it('blocks the current leader from quick self-bids', async () => {

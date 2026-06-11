@@ -123,7 +123,7 @@ describe('auction lifecycle', () => {
 
     const tooLow = placeBid(db, { auctionId, userId: 'bob', amount: 1050, allowSelfRaise: true, nowMs: NOW + 2_000 });
     expect(tooLow.ok).toBe(false);
-    expect(tooLow.reason).toContain('1100');
+    expect(tooLow.reason).toContain('1,100');
 
     const outbid = placeBid(db, { auctionId, userId: 'bob', amount: 1500, allowSelfRaise: true, nowMs: NOW + 3_000 });
     expect(outbid.ok).toBe(true);

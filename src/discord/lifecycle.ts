@@ -11,7 +11,8 @@ import {
   listActiveAuctions,
   placeBid,
 } from '../services/auctions';
-import { buildAuctionButtons, buildAuctionEmbed, formatGold } from './embeds';
+import { formatAmount } from '../utils/format';
+import { buildAuctionButtons, buildAuctionEmbed } from './embeds';
 
 export interface AppContext {
   db: Db;
@@ -96,6 +97,7 @@ export async function refreshAuctionMessage(ctx: AppContext, auctionId: number):
           item,
           highestBid: getHighestBid(ctx.db, auctionId) ?? null,
           bidCount: countActiveBids(ctx.db, auctionId),
+          unit: ctx.config.currencyUnit,
         }),
       ],
       components: buildAuctionButtons(auction),
@@ -130,7 +132,7 @@ export async function finalizeExpiredAuction(ctx: AppContext, auctionId: number)
     ctx,
     auctionId,
     result.winningBid
-      ? `⏰ Auction #${auctionId} (**${itemName}**) ended — won by <@${result.winningBid.user_id}> for **${formatGold(result.winningBid.amount)}**.`
+      ? `⏰ Auction #${auctionId} (**${itemName}**) ended — won by <@${result.winningBid.user_id}> for **${formatAmount(result.winningBid.amount, ctx.config.currencyUnit)}**.`
       : `⏰ Auction #${auctionId} (**${itemName}**) ended with no bids.`
   );
 }
@@ -149,7 +151,7 @@ export async function executeBidFlow(
   ctx: AppContext,
   input: { auctionId: number; userId: string; amount: number; allowSelfRaise: boolean }
 ): Promise<BidFlowResult> {
-  const result = placeBid(ctx.db, input);
+  const result = placeBid(ctx.db, { ...input, unit: ctx.config.currencyUnit });
   if (!result.ok || !result.auction || !result.bid) {
     return { ok: false, message: result.reason ?? 'Bid failed.' };
   }
@@ -163,12 +165,22 @@ export async function executeBidFlow(
     });
   }
   await refreshAuctionMessage(ctx, result.auction.id);
+  if (result.outbid) {
+    const item = getAuctionItem(ctx.db, result.auction);
+    const itemName = item?.item_name ?? `auction #${result.auction.id}`;
+    await announceInAuctionChannel(
+      ctx,
+      result.auction.id,
+      `<@${result.outbid.user_id}> you've been outbid on **${itemName}** (auction #${result.auction.id}) — ` +
+        `current bid is now **${formatAmount(result.bid.amount, ctx.config.currencyUnit)}**.`
+    );
+  }
   const extendedNote = result.extended
     ? ' Your bid landed in the final 20 seconds, so the auction was extended by 30 seconds.'
     : '';
   return {
     ok: true,
-    message: `Bid placed: **${formatGold(result.bid.amount)}** on auction #${result.auction.id}.${extendedNote}`,
+    message: `Bid placed: **${formatAmount(result.bid.amount, ctx.config.currencyUnit)}** on auction #${result.auction.id}.${extendedNote}`,
   };
 }
 
@@ -198,7 +210,7 @@ export async function executeCloseFlow(
   return {
     ok: true,
     message: result.winningBid
-      ? `🔨 Auction #${input.auctionId} (**${itemName}**) closed — won by <@${result.winningBid.user_id}> for **${formatGold(result.winningBid.amount)}**. Settlement opened as **unpaid**.`
+      ? `🔨 Auction #${input.auctionId} (**${itemName}**) closed — won by <@${result.winningBid.user_id}> for **${formatAmount(result.winningBid.amount, ctx.config.currencyUnit)}**. Settlement opened as **unpaid**.`
       : `🔨 Auction #${input.auctionId} (**${itemName}**) closed with no bids.`,
   };
 }

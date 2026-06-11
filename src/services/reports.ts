@@ -1,5 +1,10 @@
 import type { UserRow } from '../db/types';
-import { formatGold } from '../utils/format';
+import {
+  DEFAULT_CURRENCY_UNIT,
+  formatAmount,
+  unitLabel,
+  type CurrencyUnit,
+} from '../utils/format';
 import type { LedgerSummary } from './auctions';
 
 export interface LedgerReportInput {
@@ -7,6 +12,7 @@ export interface LedgerReportInput {
   displayName: string;
   character?: Pick<UserRow, 'character_name' | 'realm'>;
   ledger: LedgerSummary;
+  unit?: CurrencyUnit;
   nowMs?: number;
 }
 
@@ -21,6 +27,8 @@ function formatUtcDate(ms: number | null): string {
  */
 export function buildLedgerTextReport(input: LedgerReportInput): string {
   const { displayName, character, ledger } = input;
+  const unit = input.unit ?? DEFAULT_CURRENCY_UNIT;
+  const fmt = (amount: number): string => formatAmount(amount, unit);
   const generatedAt = new Date(input.nowMs ?? Date.now())
     .toISOString()
     .slice(0, 16)
@@ -36,18 +44,18 @@ export function buildLedgerTextReport(input: LedgerReportInput): string {
   } else {
     for (const entry of ledger.entries) {
       lines.push(
-        `#${entry.auction_id} | ${entry.item_name} | ${formatGold(entry.final_price)} | ` +
+        `#${entry.auction_id} | ${entry.item_name} | ${fmt(entry.final_price)} | ` +
           `${entry.settlement_status} | ${formatUtcDate(entry.closed_at)}`
       );
     }
     lines.push(
       '',
       `Won auctions: ${ledger.entries.length}`,
-      `Total owed (unpaid): ${formatGold(ledger.totalOwed)}`,
-      `Settled (paid/traded): ${formatGold(ledger.totalSettled)}`
+      `Total owed (unpaid): ${fmt(ledger.totalOwed)}`,
+      `Settled (paid/traded): ${fmt(ledger.totalSettled)}`
     );
   }
 
-  lines.push('', 'Settlement is in-game gold/trade only — no real-money payments.');
+  lines.push('', `Settlement is ${unitLabel(unit)}/trade only — no real-money payments.`);
   return lines.join('\n');
 }

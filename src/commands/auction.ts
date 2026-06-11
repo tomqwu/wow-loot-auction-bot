@@ -1,12 +1,16 @@
 import { MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { buildAuctionButtons, buildAuctionEmbed, formatGold } from '../discord/embeds';
+import { buildAuctionButtons, buildAuctionEmbed } from '../discord/embeds';
+import { formatAmount } from '../utils/format';
 import { executeCloseFlow, refreshAuctionMessage } from '../discord/lifecycle';
 import { requireOfficer } from '../discord/permissions';
 import { logAudit } from '../services/audit';
 import {
   createAuction,
   getAuction,
+  getAuctionItem,
   getBidHistory,
+  getHighestBid,
+  listActiveAuctions,
   setAuctionMessage,
   voidBid,
 } from '../services/auctions';
@@ -27,14 +31,14 @@ export const auctionCommand: BotCommand = {
         .addIntegerOption((option) =>
           option
             .setName('start')
-            .setDescription('Starting price in gold')
+            .setDescription('Starting price')
             .setRequired(true)
             .setMinValue(0)
         )
         .addIntegerOption((option) =>
           option
             .setName('min_increment')
-            .setDescription('Minimum bid increment in gold')
+            .setDescription('Minimum bid increment')
             .setRequired(true)
             .setMinValue(1)
         )
@@ -75,6 +79,9 @@ export const auctionCommand: BotCommand = {
         )
     )
     .addSubcommand((sub) =>
+      sub.setName('list').setDescription('List all currently open auctions')
+    )
+    .addSubcommand((sub) =>
       sub
         .setName('history')
         .setDescription('Show the bid history of an auction')
@@ -102,6 +109,8 @@ export const auctionCommand: BotCommand = {
         return handleCloseOrCancel(interaction, ctx, false);
       case 'cancel':
         return handleCloseOrCancel(interaction, ctx, true);
+      case 'list':
+        return handleList(interaction, ctx);
       case 'history':
         return handleHistory(interaction, ctx);
       case 'voidbid':
@@ -162,7 +171,15 @@ async function handleStart(...[interaction, ctx]: CommandArgs): Promise<void> {
   });
 
   await interaction.reply({
-    embeds: [buildAuctionEmbed({ auction, item, highestBid: null, bidCount: 0 })],
+    embeds: [
+      buildAuctionEmbed({
+        auction,
+        item,
+        highestBid: null,
+        bidCount: 0,
+        unit: ctx.config.currencyUnit,
+      }),
+    ],
     components: buildAuctionButtons(auction),
   });
   const message = await interaction.fetchReply();
@@ -190,6 +207,31 @@ async function handleCloseOrCancel(
   );
 }
 
+async function handleList(...[interaction, ctx]: CommandArgs): Promise<void> {
+  const auctions = listActiveAuctions(ctx.db).sort((a, b) => a.ends_at - b.ends_at);
+  if (auctions.length === 0) {
+    await interaction.reply({
+      content: 'No auctions are open right now.',
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+  const unit = ctx.config.currencyUnit;
+  const lines = auctions.map((auction) => {
+    const item = getAuctionItem(ctx.db, auction);
+    const highestBid = getHighestBid(ctx.db, auction.id);
+    const itemName = item?.item_name ?? `item #${auction.item_id_ref}`;
+    const bidText = highestBid
+      ? `${formatAmount(highestBid.amount, unit)} (<@${highestBid.user_id}>)`
+      : `no bids, starts at ${formatAmount(auction.start_price, unit)}`;
+    return `**#${auction.id}** — ${itemName} — ${bidText} — ends <t:${Math.floor(auction.ends_at / 1000)}:R>`;
+  });
+  await interaction.reply({
+    content: `**Open auctions (${auctions.length})**\n${lines.join('\n')}`,
+    allowedMentions: { parse: [] },
+  });
+}
+
 async function handleHistory(...[interaction, ctx]: CommandArgs): Promise<void> {
   const auctionId = interaction.options.getInteger('auction_id', true);
   const auction = getAuction(ctx.db, auctionId);
@@ -206,7 +248,7 @@ async function handleHistory(...[interaction, ctx]: CommandArgs): Promise<void> 
     return;
   }
   const allLines = bids.map((bid) => {
-    const line = `\`#${bid.id}\` **${formatGold(bid.amount)}** — <@${bid.user_id}> — <t:${Math.floor(bid.created_at / 1000)}:f>`;
+    const line = `\`#${bid.id}\` **${formatAmount(bid.amount, ctx.config.currencyUnit)}** — <@${bid.user_id}> — <t:${Math.floor(bid.created_at / 1000)}:f>`;
     return bid.voided ? `~~${line}~~ *(voided: ${bid.void_reason ?? 'no reason'})*` : line;
   });
   // Keep the most recent bids; Discord message content caps at 2000 characters.
@@ -243,7 +285,7 @@ async function handleVoidBid(...[interaction, ctx]: CommandArgs): Promise<void> 
   }
   await refreshAuctionMessage(ctx, result.auction.id);
   await interaction.reply({
-    content: `Voided bid \`#${result.bid.id}\` (${formatGold(result.bid.amount)} by <@${result.bid.user_id}>) on auction #${result.auction.id}. Current price is now ${formatGold(result.auction.current_price)}.`,
+    content: `Voided bid \`#${result.bid.id}\` (${formatAmount(result.bid.amount, ctx.config.currencyUnit)} by <@${result.bid.user_id}>) on auction #${result.auction.id}. Current price is now ${formatAmount(result.auction.current_price, ctx.config.currencyUnit)}.`,
     allowedMentions: { parse: [] },
   });
 }

@@ -259,6 +259,34 @@ describe('executeBidFlow', () => {
     expect(getAuction(ctx.db, auction.id)!.current_price).toBe(1200);
   });
 
+  it('pings the displaced leader when a different user outbids them', async () => {
+    const ctx = context();
+    const auction = seedAuction(ctx);
+    upsertUser(ctx.db, 'alice', 'Alicia', 'Whitemane');
+    upsertUser(ctx.db, 'bob', 'Bobbo', 'Whitemane');
+    await executeBidFlow(ctx, { auctionId: auction.id, userId: 'alice', amount: 1000, allowSelfRaise: true });
+    ctx.channel.send.mockClear();
+
+    await executeBidFlow(ctx, { auctionId: auction.id, userId: 'bob', amount: 1500, allowSelfRaise: true });
+
+    expect(ctx.channel.send).toHaveBeenCalledWith(
+      expect.stringContaining("<@alice> you've been outbid")
+    );
+    expect(ctx.channel.send).toHaveBeenCalledWith(expect.stringContaining('1,500g'));
+  });
+
+  it('does not ping on a self-raise by the current leader', async () => {
+    const ctx = context();
+    const auction = seedAuction(ctx);
+    upsertUser(ctx.db, 'alice', 'Alicia', 'Whitemane');
+    await executeBidFlow(ctx, { auctionId: auction.id, userId: 'alice', amount: 1000, allowSelfRaise: true });
+    ctx.channel.send.mockClear();
+
+    await executeBidFlow(ctx, { auctionId: auction.id, userId: 'alice', amount: 1200, allowSelfRaise: true });
+
+    expect(ctx.channel.send).not.toHaveBeenCalled();
+  });
+
   it('extends, re-arms the timer, and audits anti-snipe bids', async () => {
     const ctx = context();
     const auction = seedAuction(ctx);
